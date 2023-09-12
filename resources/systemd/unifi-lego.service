@@ -4,5 +4,5 @@ Description=Lets Encrypt certificate renewal
 Type=oneshot
 RemainAfterExit=false
 TimeoutSec=15m
-WorkingDirectory=/data/udm-le
-ExecStart=/data/udm-le/udm-le.sh renew
+WorkingDirectory=/usr/lib/unifi/data/unifi-lego
+ExecStart=/usr/lib/unifi/data/unifi-lego/unifi-lego.sh renew

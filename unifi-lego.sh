@@ -5,7 +5,7 @@ set -e
 
 # Load environment variables
 set -a
-source /data/udm-le/udm-le.env
+source /usr/lib/unifi/data/unifi-lego/unifi-lego.env
 set +a
 
 # Setup additional variables for later
@@ -15,13 +15,13 @@ RESTART_SERVICES=false
 
 # Show usage
 usage() {
-	echo "Usage: udm-le.sh action [ --restart-services ]"
+	echo "Usage: unifi-lego.sh action [ --restart-services ]"
 	echo "Actions:"
-	echo "  - udm-le.sh create_services: Force (re-)creates systemd service and timer for automated renewal."
-	echo "  - udm-le.sh initial: Generate new certificate and set up cron job to renew at 03:00 each morning."
-	echo "  - udm-le.sh install_lego: Force (re-)installs lego, using LEGO_VERSION from udm-le.env."
-	echo "  - udm-le.sh renew: Renew certificate if due for renewal."
-	echo "  - udm-le.sh update_keystore: Update keystore used by Captive Portal/WiFiman"
+	echo "  - unifi-lego.sh create_services: Force (re-)creates systemd service and timer for automated renewal."
+	echo "  - unifi-lego.sh initial: Generate new certificate and set up cron job to renew at 03:00 each morning."
+	echo "  - unifi-lego.sh install_lego: Force (re-)installs lego, using LEGO_VERSION from unifi-lego.env."
+	echo "  - unifi-lego.sh renew: Renew certificate if due for renewal."
+	echo "  - unifi-lego.sh update_keystore: Update keystore used by Captive Portal/WiFiman"
 	echo "              with either full certificate chain (if NO_BUNDLE='no') or server certificate only (if NO_BUNDLE='yes')."
 	echo ""
 	echo "Options:"
@@ -60,11 +60,11 @@ done
 
 create_services() {
 	# Create systemd service and timers (for renewal)
-	echo "create_services(): Creating udm-le systemd service and timer"
-	cp -f "${UDM_LE_PATH}/resources/systemd/udm-le.service" /etc/systemd/system/udm-le.service
-	cp -f "${UDM_LE_PATH}/resources/systemd/udm-le.timer" /etc/systemd/system/udm-le.timer
+	echo "create_services(): Creating unifi-lego systemd service and timer"
+	cp -f "${UDM_LE_PATH}/resources/systemd/unifi-lego.service" /etc/systemd/system/unifi-lego.service
+	cp -f "${UDM_LE_PATH}/resources/systemd/unifi-lego.timer" /etc/systemd/system/unifi-lego.timer
 	systemctl daemon-reload
-	systemctl enable udm-le.timer
+	systemctl enable unifi-lego.timer
 }
 
 deploy_certs() {
@@ -75,9 +75,9 @@ deploy_certs() {
 	if [ "$(find -L "${UDM_LE_PATH}"/.lego -type f -name "${LEGO_CERT_NAME}".crt -mmin -5)" ]; then
 		echo "deploy_certs(): New certificate was generated, time to deploy it"
 
-		cp -f "${UDM_LE_PATH}"/.lego/certificates/"${LEGO_CERT_NAME}".crt "${UBIOS_CONTROLLER_CERT_PATH}"/unifi-core.crt
-		cp -f "${UDM_LE_PATH}"/.lego/certificates/"${LEGO_CERT_NAME}".key "${UBIOS_CONTROLLER_CERT_PATH}"/unifi-core.key
-		chmod 644 "${UBIOS_CONTROLLER_CERT_PATH}"/unifi-core.crt "${UBIOS_CONTROLLER_CERT_PATH}"/unifi-core.key
+		cp -f "${UDM_LE_PATH}"/.lego/certificates/"${LEGO_CERT_NAME}".crt "${UBIOS_CONTROLLER_CERT_PATH}"/unifi.crt
+		cp -f "${UDM_LE_PATH}"/.lego/certificates/"${LEGO_CERT_NAME}".key "${UBIOS_CONTROLLER_CERT_PATH}"/unifi.key
+		chmod 644 "${UBIOS_CONTROLLER_CERT_PATH}"/unifi.crt "${UBIOS_CONTROLLER_CERT_PATH}"/unifi.key
 
 		if [ "$ENABLE_CAPTIVE" == "yes" ]; then
 			update_keystore
@@ -116,13 +116,13 @@ update_keystore() {
 		echo "update_keystore(): Importing server certificate only"
 
 		# Export only the server certificate from the full chain bundle
-		openssl x509 -in "${UNIFIOS_CERT_PATH}"/unifi-core.crt >"${UNIFIOS_CERT_PATH}"/unifi-core-server-only.crt
+		openssl x509 -in "${UNIFIOS_CERT_PATH}"/unifi.crt >"${UNIFIOS_CERT_PATH}"/unifi-core-server-only.crt
 
 		# Bundle the private key and server-only certificate into a PKCS12 format file
 		openssl pkcs12 \
 			-export \
 			-in "${UNIFIOS_CERT_PATH}"/unifi-core-server-only.crt \
-			-inkey "${UNIFIOS_CERT_PATH}"/unifi-core.key \
+			-inkey "${UNIFIOS_CERT_PATH}"/unifi.key \
 			-name "${UNIFIOS_KEYSTORE_CERT_ALIAS}" \
 			-out "${UNIFIOS_KEYSTORE_PATH}"/unifi-core-key-plus-server-only-cert.p12 \
 			-password pass:"${UNIFIOS_KEYSTORE_PASSWORD}"
@@ -146,7 +146,7 @@ update_keystore() {
 	else
 		# Import full certificate chain bundle to keystore
 		echo "update_keystore(): Importing full certificate chain bundle"
-		${CERT_IMPORT_CMD} "${UNIFIOS_CERT_PATH}/unifi-core.key" "${UNIFIOS_CERT_PATH}/unifi-core.crt"
+		${CERT_IMPORT_CMD} "${UNIFIOS_CERT_PATH}/unifi.key" "${UNIFIOS_CERT_PATH}/unifi-core.crt"
 	fi
 }
 
@@ -202,8 +202,8 @@ initial)
 	echo "initial(): Attempting certificate generation"
 	echo "initial(): ${LEGO_BINARY} --path \"${LEGO_PATH}\" ${LEGO_ARGS} --accept-tos run"
 	${LEGO_BINARY} --path "${LEGO_PATH}" ${LEGO_ARGS} --accept-tos run && deploy_certs && restart_services
-	echo "initial(): Starting udm-le systemd timer"
-	systemctl start udm-le.timer
+	echo "initial(): Starting unifi-lego systemd timer"
+	systemctl start unifi-lego.timer
 	;;
 install_lego)
 	echo "install_lego(): Forcing installation of lego"

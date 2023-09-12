@@ -1,6 +1,6 @@
 [Unit]
 Description=Run Lets Encrypt renewal daily and at startup
-After=unifi.service unifi-core.service
+After=unifi.service
 [Timer]
 OnStartupSec=300
 OnCalendar=*-*-* 03:00:00
