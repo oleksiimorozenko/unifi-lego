@@ -96,8 +96,8 @@ deploy_certs() {
 restart_services() {
 	# Restart services if certificates have been deployed, or we're forcing it on the command line
 	if [ "${RESTART_SERVICES}" == true ]; then
-		echo "restart_services(): Restarting unifi-core"
-		systemctl restart unifi-core &>/dev/null
+		echo "restart_services(): Restarting unifi"
+		systemctl restart unifi &>/dev/null
 
 		if [ "$ENABLE_RADIUS" == "yes" ]; then
 			echo "restart_services(): Restarting freeradius server"
@@ -116,15 +116,15 @@ update_keystore() {
 		echo "update_keystore(): Importing server certificate only"
 
 		# Export only the server certificate from the full chain bundle
-		openssl x509 -in "${UNIFIOS_CERT_PATH}"/unifi.crt >"${UNIFIOS_CERT_PATH}"/unifi-core-server-only.crt
+		openssl x509 -in "${UNIFIOS_CERT_PATH}"/unifi.crt >"${UNIFIOS_CERT_PATH}"/unifi-server-only.crt
 
 		# Bundle the private key and server-only certificate into a PKCS12 format file
 		openssl pkcs12 \
 			-export \
-			-in "${UNIFIOS_CERT_PATH}"/unifi-core-server-only.crt \
+			-in "${UNIFIOS_CERT_PATH}"/unifi-server-only.crt \
 			-inkey "${UNIFIOS_CERT_PATH}"/unifi.key \
 			-name "${UNIFIOS_KEYSTORE_CERT_ALIAS}" \
-			-out "${UNIFIOS_KEYSTORE_PATH}"/unifi-core-key-plus-server-only-cert.p12 \
+			-out "${UNIFIOS_KEYSTORE_PATH}"/unifi-key-plus-server-only-cert.p12 \
 			-password pass:"${UNIFIOS_KEYSTORE_PASSWORD}"
 
 		# Backup the keystore before editing it.
@@ -140,13 +140,13 @@ update_keystore() {
 			-destkeystore "${UNIFIOS_KEYSTORE_PATH}/keystore" \
 			-deststorepass "${UNIFIOS_KEYSTORE_PASSWORD}" \
 			-noprompt \
-			-srckeystore "${UNIFIOS_KEYSTORE_PATH}/unifi-core-key-plus-server-only-cert.p12" \
+			-srckeystore "${UNIFIOS_KEYSTORE_PATH}/unifi-key-plus-server-only-cert.p12" \
 			-srcstorepass "${UNIFIOS_KEYSTORE_PASSWORD}" \
 			-srcstoretype PKCS12
 	else
 		# Import full certificate chain bundle to keystore
 		echo "update_keystore(): Importing full certificate chain bundle"
-		${CERT_IMPORT_CMD} "${UNIFIOS_CERT_PATH}/unifi.key" "${UNIFIOS_CERT_PATH}/unifi-core.crt"
+		${CERT_IMPORT_CMD} "${UNIFIOS_CERT_PATH}/unifi.key" "${UNIFIOS_CERT_PATH}/unifi.crt"
 	fi
 }
 
